@@ -340,3 +340,14 @@ void JsonRpcConnection::TimeoutTimerHandler(void)
 	}
 }
 
+Dictionary::Ptr JsonRpcConnection::GetWorkQueuesSize(void)
+{
+	Dictionary::Ptr workQueues = new Dictionary();
+
+	for (size_t i = 0; i < l_JsonRpcConnectionWorkQueueCount; i++) {
+		workQueues->Set(l_JsonRpcConnectionWorkQueues[i].GetName(), l_JsonRpcConnectionWorkQueues[i].GetLength());
+	}
+
+	return workQueues;
+}
+

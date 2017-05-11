@@ -30,6 +30,7 @@
 #include "base/logger.hpp"
 #include "base/objectlock.hpp"
 #include "base/stdiostream.hpp"
+#include "base/perfdatavalue.hpp"
 #include "base/application.hpp"
 #include "base/context.hpp"
 #include "base/statsfunction.hpp"
@@ -292,7 +293,7 @@ void ApiListener::AddConnection(const Endpoint::Ptr& endpoint)
 	String host = endpoint->GetHost();
 	String port = endpoint->GetPort();
 
-	Log(LogInformation, "JsonRpcConnection")
+	Log(LogInformation, "ApiListener")
 	    << "Reconnecting to API endpoint '" << endpoint->GetName() << "' via host '" << host << "' and port '" << port << "'";
 
 	TcpSocket::Ptr client = new TcpSocket();
@@ -1068,7 +1069,7 @@ void ApiListener::StatsFunc(const Dictionary::Ptr& status, const Array::Ptr& per
 
 	ObjectLock olock(stats.second);
 	for (const Dictionary::Pair& kv : stats.second)
-		perfdata->Add("'api_" + kv.first + "'=" + Convert::ToString(kv.second));
+		perfdata->Add(new PerfdataValue("api_" + kv.first, kv.second));
 
 	status->Set("api", stats.first);
 }
@@ -1152,9 +1153,29 @@ std::pair<Dictionary::Ptr, Dictionary::Ptr> ApiListener::GetStatus(void)
 
 	status->Set("zones", connectedZones);
 
+	/* connection stats */
+	Dictionary::Ptr jsonRpc = new Dictionary();
+	jsonRpc->Set("clients", GetAnonymousClients().size());
+	jsonRpc->Set("work_queue_items", JsonRpcConnection::GetWorkQueuesSize());
+	jsonRpc->Set("sync_queue_items", m_SyncQueue.GetLength());
+	jsonRpc->Set("relay_queue_items", m_RelayQueue.GetLength());
+
+	Dictionary::Ptr http = new Dictionary();
+	http->Set("clients", GetHttpClients().size());
+
+	status->Set("json_rpc", jsonRpc);
+	status->Set("http", http);
+
+	/* performance data */
 	perfdata->Set("num_endpoints", allEndpoints);
 	perfdata->Set("num_conn_endpoints", Convert::ToDouble(allConnectedEndpoints->GetLength()));
 	perfdata->Set("num_not_conn_endpoints", Convert::ToDouble(allNotConnectedEndpoints->GetLength()));
+
+	perfdata->Set("num_json_rpc_clients", GetAnonymousClients().size());
+	perfdata->Set("num_http_clients", GetHttpClients().size());
+	//perfdata->Set("num_json_rpc_work_queue_items", Empty); //TODO: Sum up all?
+	perfdata->Set("num_json_rpc_sync_queue_items", m_SyncQueue.GetLength());
+	perfdata->Set("num_json_rpc_relay_queue_items", m_RelayQueue.GetLength());
 
 	return std::make_pair(status, perfdata);
 }
