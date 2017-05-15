@@ -36,9 +36,9 @@
 
 using namespace icinga;
 
-REGISTER_SAFE_SCRIPTFUNCTION_NS(System, regex, &ScriptUtils::Regex, "pattern:text");
-REGISTER_SAFE_SCRIPTFUNCTION_NS(System, match, &Utility::Match, "pattern:text");
-REGISTER_SAFE_SCRIPTFUNCTION_NS(System, cidr_match, &Utility::CidrMatch, "pattern:ip");
+REGISTER_SAFE_SCRIPTFUNCTION_NS(System, regex, &ScriptUtils::Regex, "pattern:text:mode");
+REGISTER_SAFE_SCRIPTFUNCTION_NS(System, match, &ScriptUtils::Match, "pattern:text:mode");
+REGISTER_SAFE_SCRIPTFUNCTION_NS(System, cidr_match, &ScriptUtils::CidrMatch, "pattern:ip:mode");
 REGISTER_SAFE_SCRIPTFUNCTION_NS(System, len, &ScriptUtils::Len, "value");
 REGISTER_SAFE_SCRIPTFUNCTION_NS(System, union, &ScriptUtils::Union, "");
 REGISTER_SAFE_SCRIPTFUNCTION_NS(System, intersection, &ScriptUtils::Intersection, "");
@@ -81,8 +81,14 @@ bool ScriptUtils::CastBool(const Value& value)
 {
 	return value.ToBool();
 }
-bool ScriptUtils::Regex(const String& pattern, const String& text)
+bool ScriptUtils::Regex(const std::vector<Value>& args)
 {
+	if (args.size() < 2)
+		BOOST_THROW_EXCEPTION(std::invalid_argument("Regular expression and text must be specified."));
+
+	String pattern = args[0];
+	String text = args[1];
+
 	bool res = false;
 	try {
 		boost::regex expr(pattern.GetData());
@@ -93,6 +99,28 @@ bool ScriptUtils::Regex(const String& pattern, const String& text)
 	}
 
 	return res;
+}
+
+bool ScriptUtils::Match(const std::vector<Value>& args)
+{
+	if (args.size() < 2)
+		BOOST_THROW_EXCEPTION(std::invalid_argument("Pattern and text must be specified."));
+
+	String pattern = args[0];
+	String text = args[1];
+
+	return Utility::Match(pattern, text);
+}
+
+bool ScriptUtils::CidrMatch(const std::vector<Value>& args)
+{
+	if (args.size() < 2)
+		BOOST_THROW_EXCEPTION(std::invalid_argument("CIDR and IP address must be specified."));
+
+	String pattern = args[0];
+	String ip = args[1];
+
+	return Utility::CidrMatch(pattern, ip);
 }
 
 double ScriptUtils::Len(const Value& value)
